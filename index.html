@@ -11,7 +11,7 @@
     <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <style>
-/* CSS styles for the page and chart container */
+        /* CSS styles for the page and chart container */
         html, body {
             width: 100%;
             height: 100%;
@@ -22,7 +22,7 @@
 
         #chartdiv {
             width: 100%;
-            height: 100%; /* Alterado de 750px para 100% */
+            height: 100%;
             overflow: hidden;
         }
     </style>
@@ -62,9 +62,8 @@
                     panX: "rotateX",
                     panY: "translateY",
                     projection: am5map.geoMercator(),
-                    // Adicione estas duas linhas para centralizar a visão inicial
-                    homeGeoPoint: { longitude: -55, latitude: -10 },
-                    homeZoomLevel: 1.2
+                    homeGeoPoint: { longitude: -55, latitude: -10 }, // Center on Brazil
+                    homeZoomLevel: 1 // Adjusted zoom for a wider initial view
                 })
             );
             
@@ -134,9 +133,9 @@
                 chart.set("projection", am5map.geoOrthographic());
                 chart.set("panY", "rotateY");
                 // Center on Brazil when switching to globe
-                chart.set("rotationX", -55); // Longitude do Brasil
-                chart.set("rotationY", -10); // Latitude do Brasil
-                chart.set("zoomLevel", 1.8); // Ajuste o zoom para o globo ficar maior
+                chart.set("rotationX", -55);
+                chart.set("rotationY", -10);
+                chart.set("zoomLevel", 1.8); // Make the globe larger
                 backgroundSeries.mapPolygons.template.set("fillOpacity", 0.1);
               }
             });
