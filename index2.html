@@ -131,10 +131,11 @@
         function renderTableHeader() {
             // Define column widths
             const widths = {
-                "Nome da Instituição": "45%",
-                "Sigla": "5%",
-                "Contato": "35%",
-                "Área de Interesse": "15%"
+                "Nome da Instituição": "40%",
+                "Sigla": "10%",
+                "Natureza Jurídica": "10%",
+                "Contato": "30%",
+                "Área de Interesse": "10%"
             };
             const headerRow = `<tr>${tableHeaders.map(header => `<th scope="col" class="px-6 py-3" style="width: ${widths[header] || 'auto'}">${header}</th>`).join('')}</tr>`;
             tableHead.innerHTML = headerRow;
