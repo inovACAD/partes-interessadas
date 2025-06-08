@@ -23,6 +23,7 @@
         /* Custom scrollbar and sticky header for the table */
         .table-container {
             max-height: 80vh; /* Adjust height as needed */
+            overflow-y: auto;
         }
         thead th {
             position: sticky;
@@ -70,7 +71,7 @@
             <!-- Conteúdo Principal - Tabela de Instituições -->
             <main class="w-full md:w-3/4">
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                    <div class="overflow-x-auto table-container">
+                    <div class="overflow-y-auto table-container">
                         <table class="w-full text-sm text-left text-gray-600">
                             <thead id="institutions-table-head" class="text-xs text-gray-700 uppercase bg-gray-100">
                                 <!-- Cabeçalho da tabela será inserido aqui via JS -->
@@ -102,26 +103,59 @@
         const interesseFilterContainer = document.getElementById('interesse-filter');
         const clearFiltersBtn = document.getElementById('clearFilters');
 
+        /**
+         * A more robust CSV parser that handles unquoted fields containing commas.
+         * It assumes that if a row has more columns than the header, the extra commas
+         * belong to the first column ("Nome da Instituição").
+         * @param {string} text - The CSV string to parse.
+         * @returns {Array<Object>} - An array of objects representing the CSV data.
+         */
         function parseCSV(text) {
-            const lines = text.trim().split('\n');
-            const headers = lines[0].split(',').map(h => h.trim());
-            const data = [];
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',').map(v => v.trim());
-                let obj = {};
-                headers.forEach((header, index) => {
-                    if (header === "Área de Interesse") {
-                        obj[header] = values[index] ? values[index].split('/').map(s => s.trim()) : [];
-                    } else {
-                        obj[header] = values[index] || '';
-                    }
-                });
-                data.push(obj);
-            }
-            // Filter out the first column "Nº" from the headers to be displayed
-            tableHeaders = headers.slice(1);
+            const lines = text.trim().replace(/\r/g, "").split('\n');
+            if (lines.length < 2) return [];
+
+            const headers = lines.shift().split(',');
+            tableHeaders = headers.slice(1); // Exclude "Nº"
+            
+            const data = lines.map(line => {
+                if (line.trim() === '') return null;
+                
+                const values = line.split(',');
+                const obj = {};
+
+                // Handle cases where the name column contains commas
+                if (values.length > headers.length) {
+                    const namePartsCount = values.length - headers.length + 1;
+                    const name = values.slice(0, namePartsCount).join(',');
+                    const otherValues = values.slice(namePartsCount);
+                    const correctedValues = [name, ...otherValues];
+                    
+                    // Re-map to headers, skipping the first header ("Nº")
+                    tableHeaders.forEach((header, index) => {
+                         obj[header] = correctedValues[index] || '';
+                    });
+
+                } else {
+                     // Map values to headers, skipping the first header ("Nº")
+                    headers.slice(1).forEach((header, index) => {
+                         obj[header] = values[index + 1] || '';
+                    });
+                }
+
+                // Split "Área de Interesse" into an array
+                const areaInteresseHeader = "Área de Interesse";
+                if (obj[areaInteresseHeader]) {
+                    obj[areaInteresseHeader] = obj[areaInteresseHeader].split('/').map(s => s.trim());
+                } else {
+                    obj[areaInteresseHeader] = [];
+                }
+
+                return obj;
+            }).filter(Boolean); // Filter out any null entries from empty lines
+
             return data;
         }
+
 
         function renderTableHeader() {
             const headerRow = `<tr>${tableHeaders.map(header => `<th scope="col" class="px-6 py-3">${header}</th>`).join('')}</tr>`;
@@ -171,15 +205,12 @@
             const selectedInteresses = Array.from(document.querySelectorAll('input[name="interesse"]:checked')).map(cb => cb.value);
 
             const filteredData = institutionsData.filter(item => {
-                // Search match: checks if any value in the object includes the search term
                 const searchMatch = !searchTerm || Object.values(item).some(val => 
                     String(val).toLowerCase().includes(searchTerm)
                 );
                 
-                // Filter match for "Natureza Jurídica"
                 const naturezaMatch = selectedNaturezas.length === 0 || selectedNaturezas.includes(item["Natureza Jurídica"]);
                 
-                // Filter match for "Área de Interesse"
                 const interesseMatch = selectedInteresses.length === 0 || (Array.isArray(item["Área de Interesse"]) && item["Área de Interesse"].some(interesse => selectedInteresses.includes(interesse)));
                 
                 return searchMatch && naturezaMatch && interesseMatch;
@@ -197,6 +228,9 @@
         async function fetchAndInitialize() {
             try {
                 const response = await fetch('https://inovacad.github.io/partes-interessadas/relacao-partes-interessadas.csv');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const csvText = await response.text();
                 institutionsData = parseCSV(csvText);
                 
@@ -209,7 +243,7 @@
                 clearFiltersBtn.addEventListener('click', clearAllFilters);
 
             } catch (error) {
-                console.error("Failed to fetch or process data:", error);
+                console.error("Falha ao buscar ou processar os dados:", error);
                 tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-red-500">Erro ao carregar os dados. Tente novamente mais tarde.</td></tr>`;
             }
         }
