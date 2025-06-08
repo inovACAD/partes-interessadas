@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Instituições</title>
+    <!-- AmCharts 5 Library Imports -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/map.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <style>
+        /* CSS styles for the page and chart container */
+        body {
+            font-family: "Raleway", sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #chartdiv {
+            width: 100%;
+            height: 750px; /* Map height increased */
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <!-- The div where the chart will be rendered -->
+    <div id="chartdiv"></div>
+
+    <script>
+        /**
+         * ---------------------------------------
+         * This demo was created using amCharts 5.
+         * * For more information visit:
+         * https://www.amcharts.com/
+         * * Documentation is available at:
+         * https://www.amcharts.com/docs/v5/
+         * ---------------------------------------
+         */
+
+        // Execute code after the DOM is fully loaded
+        am5.ready(function() {
+
+            // Create root element
+            // https://www.amcharts.com/docs/v5/getting-started/#Root_element
+            var root = am5.Root.new("chartdiv");
+
+            // Set themes
+            // https://www.amcharts.com/docs/v5/concepts/themes/
+            root.setThemes([
+                am5themes_Animated.new(root)
+            ]);
+
+            // Create the map chart
+            // https://www.amcharts.com/docs/v5/charts/map-chart/
+            var chart = root.container.children.push(
+                am5map.MapChart.new(root, {
+                    panX: "rotateX",
+                    panY: "translateY",
+                    projection: am5map.geoMercator()
+                })
+            );
+            
+            // Container for the switch button
+            var cont = chart.children.push(
+              am5.Container.new(root, {
+                layout: root.horizontalLayout,
+                x: 20,
+                y: 40
+              })
+            );
+            
+            var switchButton = cont.children.push(
+              am5.Button.new(root, {
+                themeTags: ["switch"],
+                centerY: am5.p50,
+                icon: am5.Circle.new(root, {
+                  themeTags: ["icon"]
+                })
+              })
+            );
+            
+            // Add zoom controls
+            var zoomControl = chart.set("zoomControl", am5map.ZoomControl.new(root, {}));
+            zoomControl.homeButton.set("visible", true);
+
+            // Position the zoom control to the top right
+            zoomControl.set("x", am5.p100);
+            zoomControl.set("centerX", am5.p100);
+            zoomControl.set("paddingTop", 20);
+            zoomControl.set("paddingRight", 20);
+
+            // When home button is clicked, also reset projection to Mercator
+            zoomControl.homeButton.events.on("click", function() {
+              // The home button automatically calls chart.goHome(), which resets zoom and projection.
+              // We just need to make sure our switch button's state is also reset.
+              if (switchButton.get("active")) {
+                switchButton.set("active", false);
+              }
+            });
+
+            // Add labels and controls for the switch
+            cont.children.push(
+              am5.Label.new(root, {
+                centerY: am5.p50,
+                text: "Mapa"
+              })
+            );
+
+            cont.children.unshift(switchButton); // Add switch button before the "Mapa" label
+
+            cont.children.push(
+              am5.Label.new(root, {
+                centerY: am5.p50,
+                text: "Globo"
+              })
+            );
+
+            switchButton.on("active", function() {
+              if (!switchButton.get("active")) {
+                chart.set("projection", am5map.geoMercator());
+                chart.set("panY", "translateY");
+                chart.set("rotationY", 0);
+                chart.set("rotationX", 0); // Reset rotation
+                backgroundSeries.mapPolygons.template.set("fillOpacity", 0);
+              } else {
+                chart.set("projection", am5map.geoOrthographic());
+                chart.set("panY", "rotateY");
+                // Center on Brazil when switching to globe
+                chart.set("rotationX", 47.88);
+                chart.set("rotationY", -15.79);
+                backgroundSeries.mapPolygons.template.set("fillOpacity", 0.1);
+              }
+            });
+
+
+            // Create series for background fill
+            var backgroundSeries = chart.series.push(am5map.MapPolygonSeries.new(root, {}));
+            backgroundSeries.mapPolygons.template.setAll({
+              fill: root.interfaceColors.get("alternativeBackground"),
+              fillOpacity: 0,
+              strokeOpacity: 0
+            });
+            // Add background polygon
+            backgroundSeries.data.push({
+              geometry: am5map.getGeoRectangle(90, 180, -90, -180)
+            });
+
+            // Create main polygon series for countries
+            var polygonSeries = chart.series.push(
+                am5map.MapPolygonSeries.new(root, {
+                    geoJSON: am5geodata_worldLow,
+                    exclude: ["AQ"] // Exclude Antarctica
+                })
+            );
+
+            polygonSeries.mapPolygons.template.setAll({
+                tooltipText: "{name}",
+                toggleKey: "active",
+                interactive: true,
+                fill: root.interfaceColors.get("alternativeBackground"),
+                fillOpacity: 0.15,
+                strokeWidth: 0.5,
+                stroke: root.interfaceColors.get("background")
+            });
+            
+            // Create a comprehensive map for country name translations
+            const countryTranslations = {
+                "Afghanistan": "Afeganistão", "Albania": "Albânia", "Algeria": "Argélia", "Angola": "Angola", "Argentina": "Argentina", "Armenia": "Armênia",
+                "Australia": "Austrália", "Austria": "Áustria", "Azerbaijan": "Azerbaijão", "Bahamas": "Bahamas", "Bangladesh": "Bangladesh", "Belarus": "Bielorrússia",
+                "Belgium": "Bélgica", "Belize": "Belize", "Benin": "Benin", "Bhutan": "Butão", "Bolivia": "Bolívia", "Bosnia and Herzegovina": "Bósnia e Herzegovina",
+                "Botswana": "Botsuana", "Brazil": "Brasil", "Brunei Darussalam": "Brunei", "Bulgaria": "Bulgária", "Burkina Faso": "Burkina Faso", "Burundi": "Burundi",
+                "Cambodia": "Camboja", "Cameroon": "Camarões", "Canada": "Canadá", "Cape Verde": "Cabo Verde", "Central African Republic": "República Centro-Africana",
+                "Chad": "Chade", "Chile": "Chile", "China": "China", "Colombia": "Colômbia", "Congo": "Congo", "Dem. Rep. Congo": "República Democrática do Congo",
+                "Costa Rica": "Costa Rica", "Côte d'Ivoire": "Costa do Marfim", "Croatia": "Croácia", "Cuba": "Cuba", "Cyprus": "Chipre", "Czechia": "Chéquia",
+                "Denmark": "Dinamarca", "Djibouti": "Djibouti", "Dominican Republic": "República Dominicana", "Ecuador": "Equador", "Egypt": "Egito", "El Salvador": "El Salvador",
+                "Equatorial Guinea": "Guiné Equatorial", "Eritrea": "Eritreia", "Estonia": "Estônia", "Ethiopia": "Etiópia", "Falkland Is.": "Ilhas Malvinas", "Fiji": "Fiji",
+                "Finland": "Finlândia", "France": "França", "French Guiana": "Guiana Francesa", "Gabon": "Gabão", "Gambia": "Gâmbia", "Georgia": "Geórgia",
+                "Germany": "Alemanha", "Ghana": "Gana", "Greece": "Grécia", "Greenland": "Groenlândia", "Guatemala": "Guatemala", "Guinea": "Guiné", "Guinea-Bissau": "Guiné-Bissau",
+                "Guyana": "Guiana", "Haiti": "Haiti", "Honduras": "Honduras", "Hungary": "Hungria", "Iceland": "Islândia", "India": "Índia", "Indonesia": "Indonésia",
+                "Iran": "Irã", "Iraq": "Iraque", "Ireland": "Irlanda", "Israel": "Israel", "Italy": "Itália", "Jamaica": "Jamaica", "Japan": "Japão", "Jordan": "Jordânia",
+                "Kazakhstan": "Cazaquistão", "Kenya": "Quênia", "North Korea": "Coreia do Norte", "South Korea": "Coreia do Sul", "Kuwait": "Kuwait", "Kyrgyzstan": "Quirguistão",
+                "Laos": "Laos", "Latvia": "Letônia", "Lebanon": "Líbano", "Lesotho": "Lesoto", "Liberia": "Libéria", "Libya": "Líbia", "Lithuania": "Lituânia",
+                "Luxembourg": "Luxemburgo", "Macedonia": "Macedônia", "Madagascar": "Madagáscar", "Malawi": "Malawi", "Malaysia": "Malásia", "Mali": "Mali",
+                "Mauritania": "Mauritânia", "Mexico": "México", "Moldova": "Moldávia", "Mongolia": "Mongólia", "Montenegro": "Montenegro", "Morocco": "Marrocos",
+                "Mozambique": "Moçambique", "Myanmar": "Myanmar", "Namibia": "Namíbia", "Nepal": "Nepal", "Netherlands": "Holanda", "New Caledonia": "Nova Caledônia",
+                "New Zealand": "Nova Zelândia", "Nicaragua": "Nicarágua", "Niger": "Níger", "Nigeria": "Nigéria", "Norway": "Noruega", "Oman": "Omã",
+                "Pakistan": "Paquistão", "Panama": "Panamá", "Papua New Guinea": "Papua Nova Guiné", "Paraguay": "Paraguai", "Peru": "Peru", "Philippines": "Filipinas",
+                "Poland": "Polônia", "Portugal": "Portugal", "Puerto Rico": "Porto Rico", "Qatar": "Catar", "Romania": "Romênia", "Russia": "Rússia",
+                "Rwanda": "Ruanda", "Saudi Arabia": "Arábia Saudita", "Senegal": "Senegal", "Serbia": "Sérvia", "Sierra Leone": "Serra Leoa", "Slovakia": "Eslováquia",
+                "Slovenia": "Eslovênia", "Solomon Is.": "Ilhas Salomão", "Somalia": "Somália", "South Africa": "África do Sul", "Spain": "Espanha",
+                "Sri Lanka": "Sri Lanka", "Sudan": "Sudão", "S. Sudan": "Sudão do Sul", "Suriname": "Suriname", "Svalbard and Jan Mayen": "Svalbard e Jan Mayen",
+                "eSwatini": "Essuatíni", "Sweden": "Suécia", "Switzerland": "Suíça", "Syria": "Síria", "Taiwan": "Taiwan", "Tajikistan": "Tajiquistão",
+                "Tanzania": "Tanzânia", "Thailand": "Tailândia", "Timor-Leste": "Timor-Leste", "Togo": "Togo", "Trinidad and Tobago": "Trinidad e Tobago",
+                "Tunisia": "Tunísia", "Turkey": "Turquia", "Turkmenistan": "Turcomenistão", "Uganda": "Uganda", "Ukraine": "Ucrânia",
+                "United Arab Emirates": "Emirados Árabes Unidos", "United Kingdom": "Reino Unido", "United States": "Estados Unidos", "Uruguay": "Uruguai",
+                "Uzbekistan": "Uzbequistão", "Vanuatu": "Vanuatu", "Venezuela": "Venezuela", "Vietnam": "Vietnã", "W. Sahara": "Saara Ocidental",
+                "Yemen": "Iêmen", "Zambia": "Zâmbia", "Zimbabwe": "Zimbábue"
+            };
+
+            // Use an adapter to translate country names in tooltips
+            polygonSeries.mapPolygons.template.adapters.add("tooltipText", function(text, target) {
+              if (target.dataItem && target.dataItem.dataContext) {
+                let countryName = target.dataItem.dataContext.name;
+                return countryTranslations[countryName] || countryName;
+              }
+              return text;
+            });
+
+
+            // Create point series for markers with clustering
+            var pointSeries = chart.series.push(am5map.ClusteredPointSeries.new(root, {}));
+            
+            // Define clustered bullet
+            pointSeries.set("clusteredBullet", function(root) {
+                var container = am5.Container.new(root, {
+                    cursorOverStyle: "pointer"
+                });
+
+                var circle1 = container.children.push(am5.Circle.new(root, {
+                    radius: 8,
+                    tooltipY: 0,
+                    fill: am5.color(0x0165fc)
+                }));
+
+                var circle2 = container.children.push(am5.Circle.new(root, {
+                    radius: 12,
+                    fillOpacity: 0.3,
+                    tooltipY: 0,
+                    fill: am5.color(0x0165fc)
+                }));
+
+                var circle3 = container.children.push(am5.Circle.new(root, {
+                    radius: 16,
+                    fillOpacity: 0.3,
+                    tooltipY: 0,
+                    fill: am5.color(0x0165fc)
+                }));
+
+                var label = container.children.push(am5.Label.new(root, {
+                    centerX: am5.p50,
+                    centerY: am5.p50,
+                    fill: am5.color(0xffffff),
+                    populateText: true,
+                    fontSize: "10",
+                    text: "{value}"
+                }));
+
+                container.events.on("click", function(e) {
+                    pointSeries.zoomToCluster(e.target.dataItem);
+                });
+
+                return am5.Bullet.new(root, {
+                    sprite: container
+                });
+            });
+
+            // Define individual bullet
+            pointSeries.bullets.push(function() {
+                return am5.Bullet.new(root, {
+                    sprite: am5.Circle.new(root, {
+                        radius: 4,
+                        tooltipY: 0,
+                        fill: am5.color(0x0165fc),
+                        strokeOpacity: 0,
+                        tooltipText: "{title}",
+                        cursorOverStyle: "pointer"
+                    })
+                });
+            });
+
+
+            // Data for the points on the map
+            var cities = [
+              { title: "CNI", latitude: -15.7997, longitude: -47.8645 },
+              { title: "EMBRAPII", latitude: -15.8000, longitude: -47.8634 },
+              { title: "ENAP", latitude: -15.8239, longitude: -47.8427 },
+              { title: "EMBRAPA", latitude: -15.7996, longitude: -47.8878 },
+              { title: "Fiocruz", latitude: -22.8718, longitude: -43.2464 },
+              { title: "USP", latitude: -23.5595, longitude: -46.7313 },
+              { title: "UFRJ", latitude: -22.8569, longitude: -43.2330 },
+              { title: "UFF", latitude: -22.8997, longitude: -43.1226 },
+              { title: "Unicamp", latitude: -22.8178, longitude: -47.0683 },
+              { title: "FORTEC", latitude: -19.8683, longitude: -43.9633 },
+              { title: "SEBRAE", latitude: -15.8077, longitude: -47.8767 },
+              { title: "SENAI", latitude: -15.7999, longitude: -47.8631 },
+              { title: "SESI", latitude: -15.7999, longitude: -47.8631 },
+              { title: "IEL", latitude: -15.7999, longitude: -47.8631 },
+              { title: "Inmetro", latitude: -22.8105, longitude: -43.3444 },
+              { title: "IPEA", latitude: -15.7938, longitude: -47.8861 },
+              { title: "SECTI RS", latitude: -30.0346, longitude: -51.2300 },
+              { title: "SECTI MA", latitude: -2.5307, longitude: -44.3068 },
+              { title: "SECTI BA", latitude: -12.9845, longitude: -38.5093 },
+              { title: "Rio das Flores", latitude: -22.1642, longitude: -43.5858 },
+              { title: "Fundação COPPETEC-UFRJ", latitude: -22.8569, longitude: -43.2330 },
+              { title: "Fade-UFPE", latitude: -8.0476, longitude: -34.8973 },
+              { title: "FAEPI-IFAM", latitude: -3.1072, longitude: -60.0225 },
+              { title: "SETEC/MEC", latitude: -15.7975, longitude: -47.8825 },
+              { title: "SESU/MEC", latitude: -15.7975, longitude: -47.8825 },
+              { title: "FAPEPI", latitude: -5.0900, longitude: -42.8030 },
+              { title: "UFMG", latitude: -19.8683, longitude: -43.9633 },
+              { title: "UFPR", latitude: -25.4284, longitude: -49.2598 },
+              { title: "OMPI", latitude: 46.2232, longitude: 6.1384 },
+              { title: "IGQPI", latitude: 14.9161, longitude: -23.5087 },
+              { title: "IAPI", latitude: -8.8368, longitude: 13.2332 },
+              { title: "IPI", latitude: -25.9653, longitude: 32.5892 },
+              { title: "CGPDTM", latitude: 28.6139, longitude: 77.2090 },
+              { title: "EPO", latitude: 48.1391, longitude: 11.5839 },
+              { title: "DKPTO", latitude: 55.6600, longitude: 12.5856 },
+              { title: "CIPO", latitude: 45.3768, longitude: -75.6917 },
+              { title: "JPO", latitude: 35.6758, longitude: 139.7583 },
+              { title: "KIPO", latitude: 36.3504, longitude: 127.3845 },
+              { title: "IBEPE", latitude: 40.4218, longitude: -3.6925 },
+              { title: "OEPM", latitude: 40.4503, longitude: -3.6896 },
+              { title: "INPI - França", latitude: 48.8305, longitude: 2.2471 },
+              { title: "INPI - Portugal", latitude: 38.7441, longitude: -9.1601 },
+              { title: "IPOS", latitude: 1.2850, longitude: 103.8543 },
+              { title: "IPI - Suíça", latitude: 46.9480, longitude: 7.4474 },
+              { title: "ASIPI", latitude: -34.9011, longitude: -56.1645 },
+              { title: "UNH Franklin Pierce School of Law", latitude: 43.2084, longitude: -71.5361 },
+              { title: "oriGIn", latitude: 46.2044, longitude: 6.1432 },
+              { title: "APDI", latitude: 38.7223, longitude: -9.1393 },
+              { title: "ABPI", latitude: -22.9099, longitude: -43.1755 },
+              { title: "ABAPI", latitude: -22.9103, longitude: -43.1758 },
+              { title: "ASPI", latitude: -23.55065, longitude: -46.63338 },
+              { title: "OAB-RJ", latitude: -22.9079, longitude: -43.1758 },
+              { title: "CNJ", latitude: -15.7984, longitude: -47.8679 },
+              { title: "TRF-2", latitude: -22.9089, longitude: -43.1764 },
+              { title: "TJ-RJ", latitude: -22.9035, longitude: -43.1819 },
+              { title: "MCTI", latitude: -15.7975, longitude: -47.8825 },
+              { title: "Capes", latitude: -15.8364, longitude: -47.8504 },
+              { title: "MS", latitude: -15.7975, longitude: -47.8825 },
+              { title: "MinC", latitude: -15.7975, longitude: -47.8825 },
+              { title: "MEMP", latitude: -15.7975, longitude: -47.8825 },
+              { title: "CGU", latitude: -15.8005, longitude: -47.8596 },
+              { title: "SCPR/MDIC", latitude: -15.7975, longitude: -47.8825 },
+              { title: "UNESCO", latitude: 48.8500, longitude: 2.3060 }
+            ];
+            
+            for (var i = 0; i < cities.length; i++) {
+                var city = cities[i];
+                pointSeries.data.push({
+                    geometry: { type: "Point", coordinates: [city.longitude, city.latitude] },
+                    title: city.title
+                });
+            }
+
+            // Make stuff animate on load
+            chart.appear(1000, 100);
+
+        }); // end am5.ready()
+    </script>
+</body>
+</html>
