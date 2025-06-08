@@ -12,15 +12,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <style>
         /* CSS styles for the page and chart container */
-        body {
-            font-family: "Raleway", sans-serif;
+        html, body {
+            width: 100%;
+            height: 100%;
             margin: 0;
             padding: 0;
+            font-family: "Raleway", sans-serif;
         }
 
         #chartdiv {
             width: 100%;
-            height: 750px; /* Map height increased */
+            height: 100%;
             overflow: hidden;
         }
     </style>
@@ -59,7 +61,9 @@
                 am5map.MapChart.new(root, {
                     panX: "rotateX",
                     panY: "translateY",
-                    projection: am5map.geoMercator()
+                    projection: am5map.geoMercator(),
+                    homeGeoPoint: { longitude: -55, latitude: -10 }, // Center on Brazil
+                    homeZoomLevel: 1.2 // Initial zoom for Mercator
                 })
             );
             
@@ -94,11 +98,10 @@
 
             // When home button is clicked, also reset projection to Mercator
             zoomControl.homeButton.events.on("click", function() {
-              // The home button automatically calls chart.goHome(), which resets zoom and projection.
-              // We just need to make sure our switch button's state is also reset.
               if (switchButton.get("active")) {
                 switchButton.set("active", false);
               }
+              chart.goHome();
             });
 
             // Add labels and controls for the switch
@@ -123,14 +126,16 @@
                 chart.set("projection", am5map.geoMercator());
                 chart.set("panY", "translateY");
                 chart.set("rotationY", 0);
-                chart.set("rotationX", 0); // Reset rotation
+                chart.set("rotationX", 0);
                 backgroundSeries.mapPolygons.template.set("fillOpacity", 0);
+                chart.goHome(); // Use home settings for Mercator
               } else {
                 chart.set("projection", am5map.geoOrthographic());
                 chart.set("panY", "rotateY");
                 // Center on Brazil when switching to globe
-                chart.set("rotationX", 47.88);
-                chart.set("rotationY", -15.79);
+                chart.set("rotationX", -55);
+                chart.set("rotationY", -10);
+                chart.set("zoomLevel", 1.8); // Make the globe larger
                 backgroundSeries.mapPolygons.template.set("fillOpacity", 0.1);
               }
             });
