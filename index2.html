@@ -126,7 +126,7 @@
         const itemsPerPage = 25;
 
         // Filter options
-        const naturezaOptions = ["Associação Privada", "Autarquia", "Empresa Pública", "Fundação de Amparo à Pesquisa", "Fundação de Apoio", "Fundação Pública de Direito Público", "Ministério", "Organização Internacional", "Organização Social", "Órgão Público", "Prefeitura Municipal", "Programa de Cooperação", "Secretaria de Estado", "Serviço Social Autônomo", "Universidade", "Secretaria de Ministério"];
+        const naturezaOptions = ["Associação Privada", "Autarquia", "Empresa Pública", "Fundação de Amparo à Pesquisa", "Fundação de Apoio", "Fundação Pública de Direito Público", "Ministério", "Organização Internacional", "Organização Social", "Órgão do Poder Judiciário", "Prefeitura Municipal", "Programa de Cooperação", "Secretaria de Estado", "Serviço Social Autônomo", "Universidade"];
         const interesseOptions = ["Difusão do Conhecimento", "Educação Corporativa", "Estágio", "Extensão", "Gestão do Conhecimento", "Inovação", "Pesquisa", "Pós-Graduação"];
 
         // DOM Elements
@@ -251,7 +251,7 @@
         }
 
         function fetchAndInitialize() {
-            const csvUrl = 'https://inovacad.github.io/partes-interessadas/relacao.csv';
+            const csvUrl = 'https://inovacad.github.io/partes-interessadas/relacao-partes.csv';
             
             Papa.parse(csvUrl, {
                 download: true,
