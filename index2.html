@@ -21,16 +21,25 @@
         .search-input {
             padding-left: 2.5rem;
         }
-        /* Custom scrollbar and sticky header for the table */
-        .table-container {
-            max-height: 80vh; /* Adjust height as needed */
-            overflow-y: auto;
+        /* Fixed layout for table */
+        .fixed-table {
+            table-layout: fixed;
+            width: 100%;
         }
-        thead th {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: #f3f4f6; /* Ensure header has a background */
+        .pagination-button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d5db;
+            background-color: white;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .pagination-button:hover:not(:disabled) {
+            background-color: #f3f4f6;
+        }
+        .pagination-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
         }
     </style>
 </head>
@@ -73,25 +82,28 @@
             <!-- Conteúdo Principal - Tabela de Instituições -->
             <main class="w-full md:w-3/4">
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                    <div class="overflow-y-auto table-container">
-                        <table class="w-full text-sm text-left text-gray-600">
-                            <thead id="institutions-table-head" class="text-xs text-gray-700 uppercase bg-gray-100">
-                                <!-- Cabeçalho da tabela será inserido aqui via JS -->
-                            </thead>
-                            <tbody id="institutions-table-body">
-                                <!-- Linhas da tabela serão inseridas aqui via JS -->
-                            </tbody>
-                        </table>
-                    </div>
+                    <table class="fixed-table text-sm text-left text-gray-600">
+                        <thead id="institutions-table-head" class="text-xs text-gray-700 uppercase bg-gray-100">
+                            <!-- Cabeçalho da tabela será inserido aqui via JS -->
+                        </thead>
+                        <tbody id="institutions-table-body">
+                            <!-- Linhas da tabela serão inseridas aqui via JS -->
+                        </tbody>
+                    </table>
                 </div>
+                <!-- Pagination Controls -->
+                <div id="pagination-controls" class="mt-6 flex justify-between items-center"></div>
             </main>
         </div>
     </div>
 
     <script>
-        // Global variable to hold all data
+        // Global state variables
         let institutionsData = [];
         let tableHeaders = [];
+        let currentFilteredData = [];
+        let currentPage = 1;
+        const itemsPerPage = 25;
 
         // Filter options
         const naturezaOptions = ["Associação Privada", "Autarquia", "Empresa Pública", "Fundação de Amparo à Pesquisa", "Fundação de Apoio", "Fundação Pública de Direito Público", "Ministério", "Organização Internacional", "Organização Social", "Órgão Público", "Prefeitura Municipal", "Programa de Cooperação", "Secretaria de Estado", "Serviço Social Autônomo", "Universidade", "Secretaria de Ministério"];
@@ -104,9 +116,19 @@
         const naturezaFilterContainer = document.getElementById('natureza-filter');
         const interesseFilterContainer = document.getElementById('interesse-filter');
         const clearFiltersBtn = document.getElementById('clearFilters');
+        const paginationContainer = document.getElementById('pagination-controls');
 
         function renderTableHeader() {
-            const headerRow = `<tr>${tableHeaders.map(header => `<th scope="col" class="px-6 py-3">${header}</th>`).join('')}</tr>`;
+            // Define column widths
+            const widths = {
+                "Nome da Instituição": "30%",
+                "Sigla": "10%",
+                "Natureza Jurídica": "20%",
+                "País": "10%",
+                "Sede (Cidade)": "15%",
+                "Área de Interesse": "15%"
+            };
+            const headerRow = `<tr>${tableHeaders.map(header => `<th scope="col" class="px-6 py-3" style="width: ${widths[header] || 'auto'}">${header}</th>`).join('')}</tr>`;
             tableHead.innerHTML = headerRow;
         }
         
@@ -120,9 +142,8 @@
                 let rowHtml = '<tr class="border-b hover:bg-gray-50">';
                 tableHeaders.forEach(header => {
                     const value = item[header];
-                    // Ensure value is not undefined before trying to join
                     const displayValue = Array.isArray(value) ? value.join(', ') : (value || '');
-                    rowHtml += `<td class="px-6 py-4 ${header === 'Nome da Instituição' ? 'font-medium text-gray-900' : ''}">${displayValue}</td>`;
+                    rowHtml += `<td class="px-6 py-4 break-words ${header === 'Nome da Instituição' ? 'font-medium text-gray-900' : ''}">${displayValue}</td>`;
                 });
                 rowHtml += '</tr>';
                 tableBody.innerHTML += rowHtml;
@@ -131,21 +152,55 @@
         
         function populateFilters() {
             naturezaOptions.forEach(option => {
-                naturezaFilterContainer.innerHTML += `
-                    <label class="flex items-center space-x-2 text-gray-700">
-                        <input type="checkbox" name="natureza" value="${option}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <span>${option}</span>
-                    </label>
-                `;
+                naturezaFilterContainer.innerHTML += `<label class="flex items-center space-x-2 text-gray-700"><input type="checkbox" name="natureza" value="${option}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"><span>${option}</span></label>`;
             });
             interesseOptions.forEach(option => {
-                interesseFilterContainer.innerHTML += `
-                    <label class="flex items-center space-x-2 text-gray-700">
-                        <input type="checkbox" name="interesse" value="${option}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <span>${option}</span>
-                    </label>
-                `;
+                interesseFilterContainer.innerHTML += `<label class="flex items-center space-x-2 text-gray-700"><input type="checkbox" name="interesse" value="${option}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"><span>${option}</span></label>`;
             });
+        }
+        
+        function renderPagination() {
+            paginationContainer.innerHTML = '';
+            const totalItems = currentFilteredData.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+            if (totalPages <= 1) return;
+
+            const startItem = (currentPage - 1) * itemsPerPage + 1;
+            const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
+
+            let pageInfo = `<span class="text-sm text-gray-700">Mostrando ${startItem} a ${endItem} de ${totalItems}</span>`;
+            
+            let buttons = `
+                <div>
+                    <button id="prevPage" class="pagination-button mr-2" ${currentPage === 1 ? 'disabled' : ''}>Anterior</button>
+                    <button id="nextPage" class="pagination-button" ${currentPage === totalPages ? 'disabled' : ''}>Próxima</button>
+                </div>
+            `;
+            
+            paginationContainer.innerHTML = pageInfo + buttons;
+
+            document.getElementById('prevPage').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    displayPageContent();
+                }
+            });
+
+            document.getElementById('nextPage').addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    displayPageContent();
+                }
+            });
+        }
+        
+        function displayPageContent() {
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const paginatedData = currentFilteredData.slice(start, end);
+            renderTable(paginatedData);
+            renderPagination();
         }
 
         function applyFilters() {
@@ -153,7 +208,7 @@
             const selectedNaturezas = Array.from(document.querySelectorAll('input[name="natureza"]:checked')).map(cb => cb.value);
             const selectedInteresses = Array.from(document.querySelectorAll('input[name="interesse"]:checked')).map(cb => cb.value);
 
-            const filteredData = institutionsData.filter(item => {
+            currentFilteredData = institutionsData.filter(item => {
                 const searchMatch = !searchTerm || Object.values(item).some(val => 
                     String(val).toLowerCase().includes(searchTerm)
                 );
@@ -165,7 +220,8 @@
                 return searchMatch && naturezaMatch && interesseMatch;
             });
 
-            renderTable(filteredData);
+            currentPage = 1; // Reset to first page whenever filters change
+            displayPageContent();
         }
 
         function clearAllFilters() {
@@ -188,13 +244,11 @@
                         return;
                     }
 
-                    // Extract headers, excluding the first one ("Nº")
                     if (results.meta && results.meta.fields) {
                          tableHeaders = results.meta.fields.slice(1);
                     }
 
                     institutionsData = results.data.map(item => {
-                        // Process "Área de Interesse" to be an array
                         const areaInteresseHeader = "Área de Interesse";
                         if (item[areaInteresseHeader]) {
                             item[areaInteresseHeader] = item[areaInteresseHeader].split('/').map(s => s.trim());
@@ -204,8 +258,9 @@
                         return item;
                     });
                     
+                    currentFilteredData = [...institutionsData];
                     renderTableHeader();
-                    renderTable(institutionsData);
+                    displayPageContent();
                     populateFilters();
 
                     searchInput.addEventListener('input', applyFilters);
